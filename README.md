@@ -4,6 +4,10 @@ A browser-based arcade racing game where you play as **the Bandit**, racing thro
 
 Roads are fetched live from **OpenStreetMap** via the Overpass API, so you can race through any city in the world.
 
+Play it online: https://a1anw2.github.io/smokeysandthebandit/
+
+``This was a truly vibe coded game, purposely done without looking at a single line of code to see how well Claude would do.``
+
 ## How to Play
 
 1. Open `index.html` in a browser
