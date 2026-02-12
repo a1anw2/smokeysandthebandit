@@ -42,31 +42,48 @@ class Game {
     this._loadingAborted = false;
 
     this._alanLinkBounds = null;
+    this._githubLinkBounds = null;
     this._resize();
     window.addEventListener('resize', () => this._resize());
 
     this.canvas.addEventListener('click', (e) => {
-      if (this.state === GameState.MENU && this._alanLinkBounds) {
+      if (this.state === GameState.MENU) {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = CANVAS_W / rect.width;
         const scaleY = CANVAS_H / rect.height;
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
-        const b = this._alanLinkBounds;
-        if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
-          window.open('https://alan.is', '_blank');
+        if (this._alanLinkBounds) {
+          const b = this._alanLinkBounds;
+          if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+            window.open('https://alan.is', '_blank');
+          }
+        }
+        if (this._githubLinkBounds) {
+          const b = this._githubLinkBounds;
+          if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+            window.open('https://github.com/a1anw2/smokeysandthebandit', '_blank');
+          }
         }
       }
     });
     this.canvas.addEventListener('mousemove', (e) => {
-      if (this.state === GameState.MENU && this._alanLinkBounds) {
+      if (this.state === GameState.MENU) {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = CANVAS_W / rect.width;
         const scaleY = CANVAS_H / rect.height;
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
-        const b = this._alanLinkBounds;
-        this.canvas.style.cursor = (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) ? 'pointer' : 'default';
+        let hovering = false;
+        if (this._alanLinkBounds) {
+          const b = this._alanLinkBounds;
+          if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) hovering = true;
+        }
+        if (this._githubLinkBounds) {
+          const b = this._githubLinkBounds;
+          if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) hovering = true;
+        }
+        this.canvas.style.cursor = hovering ? 'pointer' : 'default';
       } else {
         this.canvas.style.cursor = 'default';
       }
@@ -801,6 +818,17 @@ class Game {
     ctx.fillRect(startX + creditWidth, CANVAS_H - 13, linkWidth, 1);
     // store link bounds for click detection
     this._alanLinkBounds = { x: startX + creditWidth, y: CANVAS_H - 26, w: linkWidth, h: 16 };
+
+    // GitHub link
+    const ghText = 'GitHub';
+    ctx.font = '11px monospace';
+    const ghWidth = ctx.measureText(ghText).width;
+    const ghX = CANVAS_W/2 - ghWidth/2;
+    ctx.fillStyle = 'rgba(100,180,255,0.6)';
+    ctx.textAlign = 'left';
+    ctx.fillText(ghText, ghX, CANVAS_H - 2);
+    ctx.fillRect(ghX, CANVAS_H, ghWidth, 1);
+    this._githubLinkBounds = { x: ghX, y: CANVAS_H - 13, w: ghWidth, h: 16 };
   }
 
   _renderCountdown() {
