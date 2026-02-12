@@ -10,6 +10,7 @@ class Renderer {
   }
 
   preRenderTrack(track) {
+    if (!track) return;
     // RoadNetwork handles its own pre-rendering
     if (track.isOpenTrack && track.trackCanvas) {
       this.trackCanvas = track.trackCanvas;
@@ -23,18 +24,27 @@ class Renderer {
     this.trackBounds = bounds;
     const w = bounds.maxX - bounds.minX;
     const h = bounds.maxY - bounds.minY;
+
+    // Cap canvas size to avoid memory issues (same safeguard as road-network)
+    let scale = 1;
+    if (w > MAX_CANVAS_DIM || h > MAX_CANVAS_DIM) {
+      scale = MAX_CANVAS_DIM / Math.max(w, h);
+    }
+    this.renderScale = scale;
+
     this.trackCanvas = document.createElement('canvas');
-    this.trackCanvas.width = w;
-    this.trackCanvas.height = h;
+    this.trackCanvas.width = Math.ceil(w * scale);
+    this.trackCanvas.height = Math.ceil(h * scale);
     const tc = this.trackCanvas.getContext('2d');
+    tc.scale(scale, scale);
     tc.translate(-bounds.minX, -bounds.minY);
 
     // grass pattern
     tc.fillStyle = COLORS.grass;
     tc.fillRect(bounds.minX, bounds.minY, w, h);
     tc.fillStyle = COLORS.grassDark;
-    for (let y = bounds.minY; y < bounds.maxY; y += 40) {
-      tc.fillRect(bounds.minX, y, w, 20);
+    for (let y = bounds.minY; y < bounds.maxY; y += GRASS_STRIPE_HEIGHT) {
+      tc.fillRect(bounds.minX, y, w, GRASS_STRIPE_HEIGHT / 2);
     }
 
     // road surface
@@ -65,14 +75,14 @@ class Renderer {
     // curbs (outer edge)
     for (let side = 0; side < 2; side++) {
       const boundary = side === 0 ? track.leftBoundary : track.rightBoundary;
-      for (let i = 0; i < TRACK_SAMPLES; i += 8) {
-        const i2 = Math.min(i + 8, TRACK_SAMPLES - 1);
-        const color = (Math.floor(i / 8) % 2 === 0) ? COLORS.curb1 : COLORS.curb2;
+      for (let i = 0; i < TRACK_SAMPLES; i += CURB_SEGMENT_STEP) {
+        const i2 = Math.min(i + CURB_SEGMENT_STEP, TRACK_SAMPLES - 1);
+        const color = (Math.floor(i / CURB_SEGMENT_STEP) % 2 === 0) ? COLORS.curb1 : COLORS.curb2;
         tc.beginPath();
         const p1 = boundary[i], p2 = boundary[i2];
         const n1 = track.normals[i], n2 = track.normals[i2];
         const sign = side === 0 ? -1 : 1;
-        const cw = 8;
+        const cw = CURB_VISUAL_WIDTH;
         tc.moveTo(p1.x, p1.y);
         tc.lineTo(p2.x, p2.y);
         tc.lineTo(p2.x + n2.x * sign * cw, p2.y + n2.y * sign * cw);
@@ -126,6 +136,7 @@ class Renderer {
   }
 
   drawTrack(camera, track) {
+    if (!track || !this.trackCanvas || !this.trackBounds) return;
     const ctx = this.ctx;
     const b = this.trackBounds;
     const z = camera.zoom || 1;
@@ -146,6 +157,7 @@ class Renderer {
     const z = camera.zoom || 1;
     const sz = 2 * z;
     for (const sm of particles.skidMarks) {
+      if (sm.alpha <= 0) continue; // Skip fully faded marks (circular buffer keeps them)
       const s = camera.worldToScreen(sm.x, sm.y);
       ctx.fillStyle = `rgba(30,30,30,${clamp(sm.alpha, 0, 0.6)})`;
       ctx.fillRect(s.x - sz, s.y - sz, sz * 2, sz * 2);
@@ -277,6 +289,24 @@ class Renderer {
     ctx.fillRect(-2, 0, 4, car.width/2 - 3);
 
     ctx.restore();
+
+    // --- Frozen cop: dim overlay, "STOPPED" label, no radar ---
+    if (car.isFrozen) {
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.scale(z, z);
+      ctx.rotate(car.angle);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      roundRect(ctx, -car.length/2, -car.width/2, car.length, car.width, 4);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = `bold ${Math.max(8, Math.round(10 * z))}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText('STOPPED', s.x, s.y - 20 * z);
+      return;
+    }
 
     // --- Radar / detection radius (always visible) ---
     const radarR = car.radarRadius * z;

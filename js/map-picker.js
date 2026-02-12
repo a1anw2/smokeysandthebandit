@@ -141,11 +141,12 @@ class MapPicker {
       z-index: 1001; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
     `;
     const cities = [
-      { name: 'Richmond', lat: 37.5407, lng: -77.4360, zoom: 13 },
-      { name: 'Chicago', lat: 41.8781, lng: -87.6298, zoom: 13 },
-      { name: 'New York', lat: 40.7580, lng: -73.9855, zoom: 14 },
-      { name: 'London', lat: 51.5074, lng: -0.1278, zoom: 13 },
-      { name: 'Paris', lat: 48.8566, lng: 2.3522, zoom: 14 },
+      { name: 'Richmond', lat: 37.5407, lng: -77.4360, zoom: 12 },
+      { name: 'Chicago', lat: 41.8781, lng: -87.6298, zoom: 12 },
+      { name: 'New York', lat: 40.7580, lng: -73.9855, zoom: 12 },
+      { name: 'London', lat: 51.5074, lng: -0.1278, zoom: 12 },
+      { name: 'Edinburgh', lat: 55.9533, lng: -3.1883, zoom: 12 },
+      { name: 'Paris', lat: 48.8566, lng: 2.3522, zoom: 12 },
     ];
     for (const city of cities) {
       const btn = document.createElement('button');
@@ -238,7 +239,7 @@ class MapPicker {
     // Default: Richmond, VA
     this.map = L.map(this.container, {
       zoomControl: true
-    }).setView([37.5407, -77.4360], 13);
+    }).setView([37.5407, -77.4360], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',

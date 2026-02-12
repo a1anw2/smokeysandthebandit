@@ -8,16 +8,16 @@ class Car {
     this.vx = 0; this.vy = 0;
     this.speed = 0;
     this.angularVel = 0;
-    this.width = 20; this.length = 38;
+    this.width = CAR_WIDTH; this.length = CAR_LENGTH;
 
-    this.maxSpeed = 340;
-    this.accel = 220;
-    this.brakeForce = 380;
-    this.turnRate = 2.6;
-    this.gripFactor = 1.0;
-    this.driftFactor = 0.92;
-    this.drag = 0.0008;
-    this.rollingResist = 0.4;
+    this.maxSpeed = CAR_MAX_SPEED;
+    this.accel = CAR_ACCEL;
+    this.brakeForce = CAR_BRAKE_FORCE;
+    this.turnRate = CAR_TURN_RATE;
+    this.gripFactor = CAR_GRIP;
+    this.driftFactor = CAR_DRIFT_FACTOR;
+    this.drag = CAR_DRAG;
+    this.rollingResist = CAR_ROLLING_RESIST;
 
     this.throttle = 0; this.brake = 0;
     this.steerInput = 0; this.handbrake = false;
@@ -49,8 +49,8 @@ class Car {
   update(dt, track) {
     this.surfaceType = track.getSurface(this.x, this.y);
     let surfaceGrip = 1.0, surfaceDrag = 0;
-    if (this.surfaceType === 'curb') { surfaceGrip = 0.85; surfaceDrag = 10; }
-    else if (this.surfaceType === 'grass') { surfaceGrip = 0.45; surfaceDrag = 80; }
+    if (this.surfaceType === 'curb') { surfaceGrip = CURB_GRIP; surfaceDrag = CURB_DRAG; }
+    else if (this.surfaceType === 'grass') { surfaceGrip = GRASS_GRIP; surfaceDrag = GRASS_DRAG; }
 
     // longitudinal
     let fwd = 0;
@@ -60,12 +60,12 @@ class Car {
     fwd -= this.rollingResist * Math.sign(this.speed || 0.001);
     fwd -= surfaceDrag * Math.sign(this.speed || 0.001);
     this.speed += fwd * dt;
-    this.speed = clamp(this.speed, -80, this.maxSpeed);
+    this.speed = clamp(this.speed, CAR_REVERSE_MAX, this.maxSpeed);
 
     // steering
-    const speedFactor = clamp(Math.abs(this.speed) / 50, 0, 1);
-    let effectiveTurn = this.turnRate * (1 - Math.abs(this.speed) / this.maxSpeed * 0.55);
-    if (this.handbrake) effectiveTurn *= 1.6;
+    const speedFactor = clamp(Math.abs(this.speed) / SPEED_FACTOR_DIVISOR, 0, 1);
+    let effectiveTurn = this.turnRate * (1 - Math.abs(this.speed) / this.maxSpeed * TURN_REDUCTION_AT_SPEED);
+    if (this.handbrake) effectiveTurn *= HANDBRAKE_TURN_MULT;
     this.angularVel = this.steerInput * effectiveTurn * speedFactor;
     this.angle += this.angularVel * dt;
 
@@ -81,10 +81,10 @@ class Car {
 
     fwdComp = this.speed;
     let df = this.driftFactor * surfaceGrip;
-    if (this.handbrake) df = 0.96;
+    if (this.handbrake) df = HANDBRAKE_DRIFT;
     latComp *= df;
 
-    this.isDrifting = Math.abs(latComp) > 25;
+    this.isDrifting = Math.abs(latComp) > DRIFT_THRESHOLD;
     this.vx = fx * fwdComp + rx * latComp;
     this.vy = fy * fwdComp + ry * latComp;
 

@@ -4,24 +4,23 @@
 class Camera {
   constructor() {
     this.x = 0; this.y = 0;
-    this.smoothing = 0.07;
-    this.zoom = 0.2;
-    this.minZoom = 0.2;
-    this.maxZoom = 1.5;
+    this.smoothing = CAMERA_SMOOTHING;
+    this.zoom = CAMERA_ZOOM_INITIAL;
+    this.minZoom = CAMERA_ZOOM_MIN;
+    this.maxZoom = CAMERA_ZOOM_MAX;
   }
   update(target, dt) {
-    const lookAhead = 90;
     const speedRatio = clamp(target.speed / target.maxSpeed, 0, 1);
-    const tx = target.x + Math.cos(target.angle) * lookAhead * speedRatio;
-    const ty = target.y + Math.sin(target.angle) * lookAhead * speedRatio;
+    const tx = target.x + Math.cos(target.angle) * CAMERA_LOOKAHEAD * speedRatio;
+    const ty = target.y + Math.sin(target.angle) * CAMERA_LOOKAHEAD * speedRatio;
     this.x += (tx - this.x) * this.smoothing;
     this.y += (ty - this.y) * this.smoothing;
   }
   zoomIn() {
-    this.zoom = clamp(this.zoom + 0.15, this.minZoom, this.maxZoom);
+    this.zoom = clamp(this.zoom + CAMERA_ZOOM_STEP, this.minZoom, this.maxZoom);
   }
   zoomOut() {
-    this.zoom = clamp(this.zoom - 0.15, this.minZoom, this.maxZoom);
+    this.zoom = clamp(this.zoom - CAMERA_ZOOM_STEP, this.minZoom, this.maxZoom);
   }
   worldToScreen(wx, wy) {
     return {

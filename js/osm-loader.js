@@ -33,7 +33,7 @@ class OSMLoader {
         try {
           console.log(`Trying ${endpoint} (attempt ${attempt + 1})...`);
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 45000);
+          const timeoutId = setTimeout(() => controller.abort(), OSM_FETCH_TIMEOUT);
 
           const resp = await fetch(endpoint, {
             method: 'POST',
@@ -105,7 +105,7 @@ class OSMLoader {
 
     // Cap tile count to avoid excessive requests
     const tileCount = (txMax - txMin + 1) * (tyMax - tyMin + 1);
-    if (tileCount > 250) {
+    if (tileCount > MAX_TILES) {
       console.warn(`Too many tiles (${tileCount}), skipping tile background`);
       return [];
     }
@@ -126,7 +126,13 @@ class OSMLoader {
     return new Promise(resolve => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
+      // Timeout to prevent hanging on slow tile CDN
+      const timeoutId = setTimeout(() => {
+        img.src = ''; // cancel load
+        resolve(null);
+      }, TILE_FETCH_TIMEOUT);
       img.onload = () => {
+        clearTimeout(timeoutId);
         // Convert tile bounds to game coordinates
         const tileLngLeft = this._tileXToLng(tx, z);
         const tileLngRight = this._tileXToLng(tx + 1, z);
@@ -140,7 +146,7 @@ class OSMLoader {
 
         resolve({ img, gameX, gameY, gameW: gameRight - gameX, gameH: gameBottom - gameY });
       };
-      img.onerror = () => resolve(null); // skip failed tiles
+      img.onerror = () => { clearTimeout(timeoutId); resolve(null); };
       img.src = `https://tile.openstreetmap.org/${z}/${tx}/${ty}.png`;
     });
   }
@@ -250,6 +256,8 @@ class OSMLoader {
         }
       }
     }
+    // Reject if snapped point is too far from the clicked location
+    if (!bestPt || bestDist > MAX_SNAP_DIST) return null;
     return bestPt;
   }
 

@@ -5,25 +5,54 @@ class PoliceCar extends Car {
   constructor(x, y, angle) {
     super(x, y, angle, '#1565C0', 'POLICE');
     // Police can only go 80% of player max speed
-    this.maxSpeed = 340 * 0.80;
-    this.accel = 250;       // good acceleration
-    this.brakeForce = 400;
-    this.turnRate = 2.8;    // nimble
-    this.lookAhead = 140;
+    this.maxSpeed = CAR_MAX_SPEED * POLICE_SPEED_FACTOR;
+    this.accel = POLICE_ACCEL;
+    this.brakeForce = POLICE_BRAKE;
+    this.turnRate = POLICE_TURN_RATE;
+    this.lookAhead = POLICE_LOOKAHEAD;
     this.stuckTimer = 0;
 
     // Detection / chase ranges (world pixels)
-    this.radarRadius = 120;    // BUST radius — enter this = arrested
-    this.chaseRange = 720;     // start chasing when player enters this range (+20%)
-    this.giveUpRange = 2160;   // stop chasing when player gets this far (+20%)
+    this.radarRadius = POLICE_RADAR_RADIUS;
+    this.chaseRange = POLICE_CHASE_RANGE;
+    this.giveUpRange = POLICE_GIVE_UP_RANGE;
 
     this.isChasing = false;
     this.patrolAngle = 0;
     this.flashTimer = 0;
     this.sirenActive = false;
+    this.isFrozen = false;
+    this.freezeTimer = 0;
+  }
+
+  freeze() {
+    this.isFrozen = true;
+    this.freezeTimer = POLICE_FREEZE_DURATION;
+    this.isChasing = false;
+    this.sirenActive = false;
+    this.speed = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.throttle = 0;
+    this.brake = 1;
   }
 
   updatePolice(dt, track, player, allCars) {
+    // If frozen after issuing a warning, count down and skip all AI
+    if (this.isFrozen) {
+      this.freezeTimer -= dt;
+      this.speed = 0;
+      this.vx = 0;
+      this.vy = 0;
+      this.throttle = 0;
+      this.brake = 1;
+      if (this.freezeTimer <= 0) {
+        this.isFrozen = false;
+        this.freezeTimer = 0;
+      }
+      return;
+    }
+
     this.flashTimer += dt;
 
     const dx = player.x - this.x;
@@ -69,7 +98,7 @@ class PoliceCar extends Car {
       const roadDot = cos * playerDirX + sin * playerDirY;
 
       // If road goes toward player, follow it; otherwise go more direct
-      const blend = roadDot > 0.3 ? 0.5 : 0.2;
+      const blend = roadDot > 0.3 ? 0.3 : 0.1;
       const lookDist = this.lookAhead + Math.abs(this.speed) * 0.2;
       targetX = this.x + (cos * blend + playerDirX * (1 - blend)) * lookDist;
       targetY = this.y + (sin * blend + playerDirY * (1 - blend)) * lookDist;
@@ -81,17 +110,17 @@ class PoliceCar extends Car {
     // Steer toward target
     const targetAngle = Math.atan2(targetY - this.y, targetX - this.x);
     const angleDiff = normalizeAngle(targetAngle - this.angle);
-    this.steerInput = clamp(angleDiff * 3.0, -1, 1);
+    this.steerInput = clamp(angleDiff * 4.0, -1, 1);
 
-    // Speed control
+    // Speed control — aggressive pursuit
     const absTurn = Math.abs(angleDiff);
-    const safeSpeed = Math.max(60, this.maxSpeed * (1 - absTurn * 1.0));
+    const safeSpeed = Math.max(40, this.maxSpeed * (1 - absTurn * 1.0));
 
     if (this.speed > safeSpeed * 1.05) {
       this.throttle = 0;
       this.brake = clamp((this.speed - safeSpeed) / 80, 0.1, 0.9);
     } else {
-      this.throttle = clamp((safeSpeed - this.speed) / 80, 0.4, 1.0);
+      this.throttle = clamp((safeSpeed - this.speed) / 80, 0.6, 1.0);
       this.brake = 0;
     }
     this.handbrake = false;
@@ -111,8 +140,7 @@ class PoliceCar extends Car {
     this.steerInput = clamp(angleDiff * 2.0, -1, 1);
 
     // Cruise at low speed
-    const cruiseSpeed = 40;
-    if (this.speed > cruiseSpeed) {
+    if (this.speed > POLICE_CRUISE_SPEED) {
       this.throttle = 0;
       this.brake = 0.2;
     } else {
@@ -141,14 +169,14 @@ class PoliceCar extends Car {
   _handleStuck(dt, track) {
     if (Math.abs(this.speed) < 5) {
       this.stuckTimer += dt;
-      if (this.stuckTimer > 2) {
+      if (this.stuckTimer > AI_STUCK_TIMEOUT) {
         const info = track.getNearestRoad(this.x, this.y);
         if (info) {
           this.x = info.x;
           this.y = info.y;
           this.angle = info.angle;
         }
-        this.speed = 50;
+        this.speed = AI_STUCK_RECOVERY_SPEED;
         this.vx = 0;
         this.vy = 0;
         this.stuckTimer = 0;
@@ -158,8 +186,9 @@ class PoliceCar extends Car {
     }
   }
 
-  // Check if player is inside the radar radius = BUSTED
+  // Check if player is inside the radar radius = WARNING
   checkArrest(player) {
+    if (this.isFrozen) return false;
     const dx = player.x - this.x;
     const dy = player.y - this.y;
     const d = Math.sqrt(dx * dx + dy * dy);

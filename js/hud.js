@@ -2,6 +2,11 @@
 // HUD
 // ============================================================
 class HUD {
+  constructor() {
+    this._minimapCache = null;
+    this._minimapTrack = null;
+  }
+
   drawSpeedometer(ctx, speed, maxSpeed) {
     const cx = CANVAS_W - 100, cy = CANVAS_H - 90, r = 55;
     // background
@@ -317,48 +322,16 @@ class HUD {
     const ox = mx + mapW/2 - (tw * scale)/2 - bounds.minX * scale;
     const oy = my + mapH/2 - (th * scale)/2 - bounds.minY * scale;
 
-    if (track.isOpenTrack && track.segments) {
-      // Road network: draw all road segments
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-      ctx.lineWidth = 1.5;
-      for (const seg of track.segments) {
-        if (seg.points.length < 2) continue;
-        ctx.beginPath();
-        ctx.moveTo(seg.points[0].x * scale + ox, seg.points[0].y * scale + oy);
-        for (let i = 1; i < seg.points.length; i++) {
-          ctx.lineTo(seg.points[i].x * scale + ox, seg.points[i].y * scale + oy);
-        }
-        ctx.stroke();
-      }
-
-      // Start marker (green)
-      const sp = track.startPoint;
-      ctx.fillStyle = '#4CAF50';
-      ctx.beginPath();
-      ctx.arc(sp.x * scale + ox, sp.y * scale + oy, 4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Finish marker (gold)
-      const fp = track.finishPoint;
-      ctx.fillStyle = '#FFD700';
-      ctx.beginPath();
-      ctx.arc(fp.x * scale + ox, fp.y * scale + oy, 4, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // Circuit: draw track outline
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (let i = 0; i < TRACK_SAMPLES; i += 5) {
-        const p = track.points[i];
-        const sx = p.x * scale + ox, sy = p.y * scale + oy;
-        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
-      }
-      ctx.closePath();
-      ctx.stroke();
+    // Draw cached road geometry or circuit outline (only rebuilt when track changes)
+    if (this._minimapTrack !== track) {
+      this._minimapTrack = track;
+      this._minimapCache = this._buildMinimapCache(track, mapW, mapH, scale, ox, oy, mx, my);
+    }
+    if (this._minimapCache) {
+      ctx.drawImage(this._minimapCache, mx, my);
     }
 
-    // car dots
+    // car dots (dynamic — drawn every frame)
     for (let i = 0; i < cars.length; i++) {
       const car = cars[i];
       const sx = car.x * scale + ox, sy = car.y * scale + oy;
@@ -389,5 +362,128 @@ class HUD {
         }
       }
     }
+  }
+
+  _buildMinimapCache(track, mapW, mapH, scale, ox, oy, mx, my) {
+    const cache = document.createElement('canvas');
+    cache.width = mapW;
+    cache.height = mapH;
+    const c = cache.getContext('2d');
+    // Offset so world coords map to cache-local coords
+    const localOx = ox - mx;
+    const localOy = oy - my;
+
+    if (track.isOpenTrack && track.segments) {
+      // Road network: draw all road segments
+      c.strokeStyle = 'rgba(255,255,255,0.35)';
+      c.lineWidth = 1.5;
+      for (const seg of track.segments) {
+        if (seg.points.length < 2) continue;
+        c.beginPath();
+        c.moveTo(seg.points[0].x * scale + localOx, seg.points[0].y * scale + localOy);
+        for (let i = 1; i < seg.points.length; i++) {
+          c.lineTo(seg.points[i].x * scale + localOx, seg.points[i].y * scale + localOy);
+        }
+        c.stroke();
+      }
+
+      // Start marker (green)
+      const sp = track.startPoint;
+      c.fillStyle = '#4CAF50';
+      c.beginPath();
+      c.arc(sp.x * scale + localOx, sp.y * scale + localOy, 4, 0, Math.PI * 2);
+      c.fill();
+
+      // Finish marker (gold)
+      const fp = track.finishPoint;
+      c.fillStyle = '#FFD700';
+      c.beginPath();
+      c.arc(fp.x * scale + localOx, fp.y * scale + localOy, 4, 0, Math.PI * 2);
+      c.fill();
+    } else {
+      // Circuit: draw track outline
+      c.strokeStyle = 'rgba(255,255,255,0.4)';
+      c.lineWidth = 2;
+      c.beginPath();
+      for (let i = 0; i < TRACK_SAMPLES; i += 5) {
+        const p = track.points[i];
+        const sx = p.x * scale + localOx, sy = p.y * scale + localOy;
+        if (i === 0) c.moveTo(sx, sy); else c.lineTo(sx, sy);
+      }
+      c.closePath();
+      c.stroke();
+    }
+
+    return cache;
+  }
+
+  drawWarningCounter(ctx, warnings, maxWarnings) {
+    const x = CANVAS_W - 160, y = 62, w = 145, h = 35;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    roundRect(ctx, x, y, w, h, 6);
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = '#AAA';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('WARNINGS', x + 8, y + h / 2 + 3);
+
+    // Strike circles
+    const startX = x + 80;
+    const iconY = y + h / 2;
+    for (let i = 0; i < maxWarnings; i++) {
+      const ix = startX + i * 22;
+      if (i < warnings) {
+        // Filled red circle with X — warning issued
+        ctx.fillStyle = '#F44336';
+        ctx.beginPath();
+        ctx.arc(ix, iconY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFF';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(ix - 4, iconY - 4);
+        ctx.lineTo(ix + 4, iconY + 4);
+        ctx.moveTo(ix + 4, iconY - 4);
+        ctx.lineTo(ix - 4, iconY + 4);
+        ctx.stroke();
+      } else {
+        // Empty outline — no warning yet
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(ix, iconY, 8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  drawWarningPopup(ctx, timer, maxDuration) {
+    const alpha = clamp(timer / (maxDuration * 0.5), 0, 1);
+    const flash = Math.floor(Date.now() / 200) % 2;
+    const scale = 1 + (1 - alpha) * 0.1;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(CANVAS_W / 2, CANVAS_H / 2 - 50);
+    ctx.scale(scale, scale);
+
+    // Flashing red/blue background panel
+    ctx.fillStyle = flash === 0
+      ? 'rgba(33,80,200,0.6)'
+      : 'rgba(200,30,30,0.6)';
+    roundRect(ctx, -180, -35, 360, 70, 12);
+    ctx.fill();
+
+    // "WARNING!" text
+    ctx.fillStyle = '#FFF';
+    ctx.font = 'bold 42px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('WARNING!', 0, 0);
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 }

@@ -10,6 +10,7 @@ class RoadNetwork {
     this.finishPoint = { ...finishPoint };
     this.grid = {};
     this.numCheckpoints = 10;
+    this._frameCache = new Map();
 
     this._computeSegmentGeometry();
     this._buildGrid();
@@ -150,8 +151,20 @@ class RoadNetwork {
     return [];
   }
 
-  // Find nearest road point + tangent angle
+  // Clear per-frame result cache (call at start of each game frame)
+  clearFrameCache() {
+    this._frameCache.clear();
+  }
+
+  // Find nearest road point + tangent angle (with per-frame caching)
   getNearestRoad(x, y) {
+    // Quantize position to nearest 5px for cache key
+    const qx = Math.round(x / 5) * 5;
+    const qy = Math.round(y / 5) * 5;
+    const cacheKey = `${qx},${qy}`;
+    const cached = this._frameCache.get(cacheKey);
+    if (cached !== undefined) return cached;
+
     const gx = Math.floor(x / ROAD_GRID_CELL), gy = Math.floor(y / ROAD_GRID_CELL);
     let minDist = Infinity;
     let best = null;
@@ -179,6 +192,8 @@ class RoadNetwork {
         }
       }
     }
+
+    this._frameCache.set(cacheKey, best);
     return best;
   }
 
@@ -260,10 +275,9 @@ class RoadNetwork {
     const h = bounds.maxY - bounds.minY;
 
     // Cap canvas size to avoid memory issues
-    const maxDim = 10000;
     let scale = 1;
-    if (w > maxDim || h > maxDim) {
-      scale = maxDim / Math.max(w, h);
+    if (w > MAX_CANVAS_DIM || h > MAX_CANVAS_DIM) {
+      scale = MAX_CANVAS_DIM / Math.max(w, h);
     }
 
     this.trackCanvas = document.createElement('canvas');
@@ -278,13 +292,13 @@ class RoadNetwork {
     tc.fillStyle = COLORS.grass;
     tc.fillRect(bounds.minX, bounds.minY, w, h);
     tc.fillStyle = COLORS.grassDark;
-    for (let y = bounds.minY; y < bounds.maxY; y += 40) {
-      tc.fillRect(bounds.minX, y, w, 20);
+    for (let y = bounds.minY; y < bounds.maxY; y += GRASS_STRIPE_HEIGHT) {
+      tc.fillRect(bounds.minX, y, w, GRASS_STRIPE_HEIGHT / 2);
     }
 
     // Draw OSM raster tiles as background (buildings, parks, water, etc.)
     if (this.tiles.length > 0) {
-      tc.globalAlpha = 0.45;
+      tc.globalAlpha = TILE_OPACITY;
       for (const tile of this.tiles) {
         tc.drawImage(tile.img, tile.gameX, tile.gameY, tile.gameW, tile.gameH);
       }

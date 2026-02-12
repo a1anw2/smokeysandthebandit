@@ -157,7 +157,7 @@ class AICar extends Car {
   _handleStuck(dt, track) {
     if (Math.abs(this.speed) < 5) {
       this.stuckTimer += dt;
-      if (this.stuckTimer > 2) {
+      if (this.stuckTimer > AI_STUCK_TIMEOUT) {
         if (track.isOpenTrack && track.getNearestRoad) {
           const info = track.getNearestRoad(this.x, this.y);
           if (info) {
@@ -172,7 +172,7 @@ class AICar extends Car {
           this.x = pt.x; this.y = pt.y;
           this.angle = Math.atan2(tan.y, tan.x);
         }
-        this.speed = 50;
+        this.speed = AI_STUCK_RECOVERY_SPEED;
         this.vx = 0; this.vy = 0;
         this.stuckTimer = 0;
       }

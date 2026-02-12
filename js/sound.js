@@ -12,12 +12,16 @@ class SoundManager {
   init() {
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      // Resume suspended context (browser autoplay policy)
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
       this.engineOsc = this.ctx.createOscillator();
       this.engineOsc.type = 'sawtooth';
-      this.engineOsc.frequency.value = 80;
+      this.engineOsc.frequency.value = ENGINE_BASE_FREQ;
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.value = 400;
+      filter.frequency.value = ENGINE_FILTER_FREQ;
       this.engineGain = this.ctx.createGain();
       this.engineGain.gain.value = 0;
       this.engineOsc.connect(filter);
@@ -27,9 +31,14 @@ class SoundManager {
       this.started = true;
     } catch(e) { /* audio not available */ }
   }
+  resume() {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
   update(speed, throttle, maxSpeed) {
     if (!this.started || this.muted) return;
-    const rpm = 800 + (Math.abs(speed) / maxSpeed) * 4500;
+    const rpm = ENGINE_RPM_BASE + (Math.abs(speed) / maxSpeed) * ENGINE_RPM_RANGE;
     this.engineOsc.frequency.setTargetAtTime(rpm * 0.028, this.ctx.currentTime, 0.08);
     const g = 0.02 + throttle * 0.04;
     this.engineGain.gain.setTargetAtTime(g, this.ctx.currentTime, 0.08);
