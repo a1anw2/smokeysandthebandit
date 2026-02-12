@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Cannonball Run</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; position: relative; }
+canvas { display: block; }
+#map-container { border-radius: 0; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<!-- Constants & Utilities (no dependencies) -->
+<script src="js/constants.js"></script>
+<script src="js/utils.js"></script>
+
+<!-- Core Systems (depend on constants/utils) -->
+<script src="js/input.js"></script>
+<script src="js/track.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/particles.js"></script>
+<script src="js/sound.js"></script>
+
+<!-- Cars (depend on constants/utils) -->
+<script src="js/car.js"></script>
+<script src="js/player.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/police.js"></script>
+
+<!-- Rendering (depends on constants/utils) -->
+<script src="js/renderer.js"></script>
+<script src="js/hud.js"></script>
+
+<!-- OSM / Road Network (depends on constants/utils) -->
+<script src="js/osm-loader.js"></script>
+<script src="js/road-network.js"></script>
+<script src="js/map-picker.js"></script>
+<script src="js/loading-screen.js"></script>
+
+<!-- Game (depends on everything above) -->
+<script src="js/game.js"></script>
+</body>
+</html>
