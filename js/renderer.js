@@ -232,6 +232,21 @@ class Renderer {
     ctx.restore();
   }
 
+  drawTrafficCar(car, camera) {
+    const ctx = this.ctx;
+    const s = camera.worldToScreen(car.x, car.y);
+    const z = camera.zoom || 1;
+
+    this._drawCarBody(ctx, car, s, z, [
+      [0, lighten(car.color, 30)],
+      [0.5, car.color],
+      [1, darken(car.color, 30)]
+    ], darken(car.color, 40));
+
+    // Plain civilian car — no spoiler, no stripe
+    ctx.restore();
+  }
+
   drawPoliceCar(car, camera, time) {
     const ctx = this.ctx;
     const s = camera.worldToScreen(car.x, car.y);

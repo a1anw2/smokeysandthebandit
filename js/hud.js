@@ -353,6 +353,12 @@ class HUD {
         ctx.strokeStyle = flash === 0 ? 'rgba(33,150,243,0.4)' : 'rgba(244,67,54,0.4)';
         ctx.lineWidth = 1;
         ctx.stroke();
+      } else if (car instanceof TrafficCar) {
+        // Traffic: small grey dot
+        ctx.fillStyle = '#888';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
+        ctx.fill();
       } else {
         ctx.fillStyle = car.color;
         ctx.beginPath();
